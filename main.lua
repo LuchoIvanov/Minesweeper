@@ -26,7 +26,7 @@ function love.load()
     sound = love.audio.newSource('sound_effects/explosion.mp3','static')
 end
 
-function createBombs()
+function createMines()
     local placed = 0
     while placed < mines do
         local x = love.math.random(1, cols)
@@ -98,7 +98,7 @@ function love.mousepressed(mx, my, button)
         if begin == false then
             cell.first = true
             begin = true
-            createBombs()
+            createMines()
         end
         if cell.mine then
             sound:play()
