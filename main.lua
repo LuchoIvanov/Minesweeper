@@ -1,6 +1,8 @@
 function love.load()
     grid = {}
 
+    gameOver = false
+    gameWon = false
     rows = nil
     cols = nil
     cellSize = 32
@@ -13,7 +15,8 @@ function love.load()
         {-1, 1}, {0, 1}, {1, 1}
     }
 
-    sound = love.audio.newSource('sound_effects/explosion.mp3','static')
+    loseSound = love.audio.newSource('sound_effects/lose_sound.mp3','static')
+    winSound = love.audio.newSource('sound_effects/win_sound.mp3','static')
 end
 
 function createMines()
@@ -94,25 +97,35 @@ function love.draw()
                 love.graphics.rectangle("fill", px, py, cellSize, cellSize)
     
                 if cell.mine then
-                love.graphics.setColor(1, 0, 0)
-                love.graphics.circle("fill", px + 16, py + 16, 8)
+                    love.graphics.setColor(1, 0, 0)
+                    love.graphics.circle("fill", px + 16, py + 16, 8)
                 elseif cell.neighborMines > 0 then
-                love.graphics.setColor(0, 0, 0)
-                love.graphics.print(cell.neighborMines, px + 12, py + 8)
+                    love.graphics.setColor(0, 0, 0)
+                    love.graphics.print(cell.neighborMines, px + 12, py + 8)
                 end
             else
                 love.graphics.setColor(0.4, 0.4, 0.4)
                 love.graphics.rectangle("fill", px, py, cellSize, cellSize)
     
                 if cell.flagged then
-                love.graphics.setColor(1, 0, 0)
-                love.graphics.print("F", px + 12, py + 8)
+                    love.graphics.setColor(1, 0, 0)
+                    love.graphics.print("F", px + 12, py + 8)
                 end
             end
     
             love.graphics.setColor(0,0,0)
             love.graphics.rectangle("line", px, py, cellSize, cellSize)
             end
+        end
+    end
+
+    if gameOver then
+        if gameWon then
+            love.graphics.setColor(0, 1, 0)
+            love.graphics.print("You Win!", 10, 10)
+        else
+            love.graphics.setColor(1, 0, 0)
+            love.graphics.print("Game Over!", 10, 10)
         end
     end
 end
@@ -145,7 +158,7 @@ function love.mousepressed(mx, my, button)
         end
     end
 
-    if difficultyChosen == true then
+    if difficultyChosen == true and gameOver == false then
         local x = math.floor(mx / cellSize) + 1
         local y = math.floor(my / cellSize) + 1
     
@@ -158,11 +171,27 @@ function love.mousepressed(mx, my, button)
                 firstCellRevealed = true
                 createMines()
             end
-            if cell.mine then
-                sound:play()
-                revealAll()
+
+            if cell.flagged == true then
+                return
             end
+
+            if cell.mine then
+                loseSound:play()
+                revealAll()
+                gameOver = true
+                gameWon = false
+                return
+            end
+
             revealCell(x, y)
+
+            if winCheck() then
+                gameOver = true
+                gameWon = true
+                winSound:play()
+            end
+
         elseif button == 2 then
             cell.flagged = not cell.flagged
         end
@@ -185,20 +214,40 @@ function revealCell(x, y)
 
     if cell.neighborMines == 0 and not cell.mine then
     for _, d in ipairs(directions) do
-      local nx, ny = x + d[1], y + d[2]
-      if grid[ny] and grid[ny][nx] then
-        revealCell(nx, ny)
+        local nx, ny = x + d[1], y + d[2]
+        if grid[ny] and grid[ny][nx] then
+            revealCell(nx, ny)
       end
     end
   end
+end
+
+function winCheck()
+    local revealedCount = 0
+    local safeCells = rows * cols - mines
+
+    for y = 1, rows do
+        for x = 1, cols do
+            local cell = grid[y][x]
+            if cell.revealed and not cell.mine then
+                revealedCount = revealedCount + 1
+            end
+        end
+    end
+
+    if revealedCount == safeCells then
+        return true
+    else
+        return false
+    end
 end
 
 function love.update(dt)
     if love.keyboard.isDown('escape') then
         love.load()
         love.window.setMode(
-        16 * cellSize,
-        16 * cellSize
-    )
+            16 * cellSize,
+            16 * cellSize
+        )
     end
 end
